@@ -6,12 +6,30 @@ set(CMAKE_CXX_STANDARD 23)
 # Load SDL2
 add_subdirectory(lib/sdl)
 
+# Load Dear ImGui
+add_library(ImGui STATIC
+		# source
+		lib/imgui/imgui.cpp
+		lib/imgui/imgui_demo.cpp
+		lib/imgui/imgui_draw.cpp
+		lib/imgui/imgui_tables.cpp
+		lib/imgui/imgui_widgets.cpp
+
+		# cpp extension
+		lib/imgui/misc/cpp/imgui_stdlib.cpp
+
+		# backend
+		lib/imgui/backends/imgui_impl_opengl3.cpp
+		lib/imgui/backends/imgui_impl_sdl2.cpp
+		)
+target_link_libraries(ImGui PRIVATE SDL2::SDL2)
+target_include_directories(ImGui PUBLIC lib/imgui lib/imgui/backends lib/imgui/misc/cpp)
+
 include_directories(include)
 
 add_executable(opengl_template main.cpp)
 
-# Link SDL2
-target_link_libraries(${PROJECT_NAME} SDL2::SDL2)
+target_link_libraries(${PROJECT_NAME} SDL2::SDL2 ImGui)
 
 # copy runtime dll to executable
 if(WIN32)
