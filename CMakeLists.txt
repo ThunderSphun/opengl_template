@@ -3,6 +3,9 @@ project(opengl_template)
 
 set(CMAKE_CXX_STANDARD 23)
 
+find_package(OpenGL REQUIRED)
+include_directories(${OPENGL_INCLUDE_DIRS})
+
 # Load SDL2
 add_subdirectory(lib/sdl)
 
@@ -29,7 +32,7 @@ include_directories(include)
 
 add_executable(opengl_template main.cpp)
 
-target_link_libraries(${PROJECT_NAME} SDL2::SDL2 ImGui)
+target_link_libraries(${PROJECT_NAME} SDL2::SDL2 ImGui Opengl32)
 
 # copy runtime dll to executable
 if(WIN32)
