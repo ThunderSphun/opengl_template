@@ -3,11 +3,14 @@
 #define SDL_MAIN_HANDLED
 #include <SDL.h>
 #include <SDL_opengl.h>
+#include <glm/glm.hpp>
 #include <imgui.h>
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_opengl3.h>
 
 int main() {
+	glm::vec4 clearColor(0.8, 0.4, 0.5, 1.0);
+
 	SDL_InitSubSystem(SDL_INIT_VIDEO);
 
 	SDL_Window* window = SDL_CreateWindow("Hello World", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 720, 480, SDL_WINDOW_OPENGL);
@@ -68,7 +71,7 @@ int main() {
 
 			ImGui::Render();
 			glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
-			glClearColor(0.8, 0.4, 0.3, 1.0);
+			glClearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a);
 			glClear(GL_COLOR_BUFFER_BIT);
 			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
