@@ -6,12 +6,11 @@ set(CMAKE_CXX_STANDARD 23)
 find_package(OpenGL REQUIRED)
 include_directories(${OPENGL_INCLUDE_DIRS})
 
+add_subdirectory(lib/sdl)
+
 link_directories(lib/glm/glm)
 include_directories(lib/glm)
 add_subdirectory(lib/glm)
-
-# Load SDL2
-add_subdirectory(lib/sdl)
 
 # Load Dear ImGui
 add_library(ImGui STATIC
@@ -32,11 +31,16 @@ add_library(ImGui STATIC
 target_link_libraries(ImGui PRIVATE SDL2::SDL2)
 target_include_directories(ImGui PUBLIC lib/imgui lib/imgui/backends lib/imgui/misc/cpp)
 
+add_subdirectory(lib/glad/cmake)
+glad_add_library(glad_330 STATIC API gl:core=3.3)
+
 include_directories(include)
 
-add_executable(opengl_template main.cpp)
+set(SOURCES source/window.cpp)
 
-target_link_libraries(${PROJECT_NAME} SDL2::SDL2 ImGui Opengl32 glm)
+add_executable(${PROJECT_NAME} main.cpp ${SOURCES})
+
+target_link_libraries(${PROJECT_NAME} SDL2::SDL2 ImGui Opengl32 glm glad_330)
 
 # copy runtime dll to executable
 if(WIN32)
