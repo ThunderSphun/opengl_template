@@ -36,7 +36,7 @@ glad_add_library(glad_330 STATIC API gl:core=3.3)
 
 include_directories(include)
 
-set(SOURCES source/window.cpp)
+set(SOURCES source/window.cpp source/shader.cpp source/shaderProgram.cpp)
 
 add_executable(${PROJECT_NAME} main.cpp ${SOURCES})
 

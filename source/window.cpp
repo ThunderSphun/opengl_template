@@ -1,6 +1,7 @@
 #include "window.hpp"
 
 #include <iostream>
+#include <glad/gl.h>
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_opengl3.h>
 
@@ -15,11 +16,11 @@ Window::~Window() {
 	destroyWindow();
 }
 
-bool Window::initWindow(const std::string& title, glm::ivec2 windowSize, SDL_WindowFlags windowFlags) {
+bool Window::initWindow(const std::string& title, glm::ivec2 windowSize, int windowFlags) {
 	return initWindow(title, {SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED}, windowSize, windowFlags);
 }
 
-bool Window::initWindow(const std::string& title, glm::ivec2 windowPos, glm::ivec2 windowSize, SDL_WindowFlags windowFlags) {
+bool Window::initWindow(const std::string& title, glm::ivec2 windowPos, glm::ivec2 windowSize, int windowFlags) {
 	if (window != nullptr) {
 		std::cout << "attempted to reinitialize a window" << std::endl;
 		return false;
@@ -162,42 +163,49 @@ void Window::destroyImGui() {
 	ImGui::DestroyContext();
 }
 
-void Window::preDraw() {
+void Window::preDraw() const {
 	if (window == nullptr && glContext == nullptr) // assume window is already closed
 		return;
 
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplSDL2_NewFrame();
 	ImGui::NewFrame();
+
+	glm::ivec2 windowSize = getSize();
+	glViewport(0, 0, windowSize.x, windowSize.y);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
-void Window::postDraw() {
+void Window::postDraw() const {
 	if (window == nullptr && glContext == nullptr) // assume window is already closed
 		return;
 
 	ImGui::Render();
-	glViewport(0, 0, (int)imGuiIO.DisplaySize.x, (int)imGuiIO.DisplaySize.y);
-	glClear(GL_COLOR_BUFFER_BIT);
+
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-	// Update and Render additional Platform Windows
-	if (imGuiIO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+	if ((imGuiIO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) != 0)
 	{
 		ImGui::UpdatePlatformWindows();
 		ImGui::RenderPlatformWindowsDefault();
-		SDL_GL_MakeCurrent(window, glContext);
 	}
 
 	SDL_GL_SwapWindow(window);
 }
 
-uint32_t Window::id() {
+uint32_t Window::id() const {
 	return SDL_GetWindowID(window);
 }
 
-void Window::handleImGuiEvent(const SDL_Event& event) {
+void Window::handleImGuiEvent(const SDL_Event& event) const {
 	if (window == nullptr && glContext == nullptr) // assume window is already closed
 		return;
 
 	ImGui_ImplSDL2_ProcessEvent(&event);
+}
+
+glm::ivec2 Window::getSize() const {
+	glm::ivec2 windowSize(0, 0);
+	SDL_GetWindowSize(window, &windowSize.x, &windowSize.y);
+	return windowSize;
 }

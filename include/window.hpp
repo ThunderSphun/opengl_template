@@ -1,6 +1,5 @@
 #pragma once
 
-#include <glad/gl.h>
 #include <glm/glm.hpp>
 #include <imgui.h>
 #include <string>
@@ -13,8 +12,8 @@ public:
 	~Window();
 	Window(const Window&) = delete;
 
-	bool initWindow(const std::string& title, glm::ivec2 windowPos, glm::ivec2 windowSize, SDL_WindowFlags windowFlags);
-	bool initWindow(const std::string& title, glm::ivec2 windowSize, SDL_WindowFlags windowFlags);
+	bool initWindow(const std::string& title, glm::ivec2 windowPos, glm::ivec2 windowSize, int windowFlags);
+	bool initWindow(const std::string& title, glm::ivec2 windowSize, int windowFlags);
 	bool initOpenGl();
 	bool initImGui(int imGuiFlags);
 
@@ -22,11 +21,12 @@ public:
 	void destroyOpenGl();
 	void destroyImGui();
 
-	void preDraw();
-	void postDraw();
+	void preDraw() const;
+	void postDraw() const;
 
-	uint32_t id();
-	void handleImGuiEvent(const SDL_Event& event);
+	uint32_t id() const;
+	void handleImGuiEvent(const SDL_Event& event) const;
+	glm::ivec2 getSize() const;
 
 private:
 	SDL_Window* window;

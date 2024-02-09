@@ -1,3 +1,5 @@
 # jetbrains
 cmake-*/
 .idea
+
+imgui.ini
