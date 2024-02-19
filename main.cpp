@@ -46,7 +46,7 @@ int main() {
 
 void init() {
 	window = new Window();
-	if (!window->initWindow("Hello World", {720, 480}, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE))
+	if (!window->initWindow("Hello World", {936, 624}, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALWAYS_ON_TOP))
 		exit(-1);
 	if (!window->initOpenGl()) {
 		window->destroyWindow();
