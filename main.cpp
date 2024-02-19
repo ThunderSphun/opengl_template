@@ -6,31 +6,27 @@
 #include "shaderProgram.hpp"
 
 void init();
-
 void update();
-
 void draw();
-
 void destroy();
 
 struct Vertex {
 public:
 	glm::vec3 position;
 	glm::vec4 color;
-	Vertex(const glm::vec3 &position, const glm::vec4 &color) : position(position), color(color) {}
+
+	Vertex(const glm::vec3& position, const glm::vec4& color) : position(position), color(color) {}
 };
 
 Window* window;
 bool running = true;
-Shader* fragShader;
-Shader* vertShader;
 ShaderProgram* shaderProgram;
 
 int modelViewUniform;
 int timeUniform;
 
-float rotation;
-double lastTime;
+float rotation = 0;
+double lastTime = 0;
 
 int main() {
 	init();
@@ -64,17 +60,33 @@ void init() {
 		exit(-1);
 	}
 
-	fragShader = new Shader("resources/shaders/simple.frag", ShaderType::fragment);
-	vertShader = new Shader("resources/shaders/simple.vert", ShaderType::vertex);
+	Shader vertShader;
+	Shader fragShader;
+
+	try {
+		vertShader = Shader("simple", GL_VERTEX_SHADER);
+	} catch (const std::runtime_error& ex) {
+		std::cerr << ex.what() << std::endl;
+		delete window;
+		exit(-1);
+	}
+
+	try {
+		fragShader = Shader("simple", GL_FRAGMENT_SHADER);
+	} catch (const std::runtime_error& ex) {
+		std::cerr << ex.what() << std::endl;
+		delete window;
+		exit(-1);
+	}
 
 	shaderProgram = new ShaderProgram();
 	shaderProgram
-		->attachShader(*fragShader)
-		->attachShader(*vertShader)
-		->bindAttribute(0, "a_position")
-		->bindAttribute(1, "a_color")
-		->linkProgram()
-		->useProgram();
+			->attachShader(vertShader)
+			->attachShader(fragShader)
+			->bindAttribute(0, "a_position")
+			->bindAttribute(1, "a_color")
+			->linkProgram()
+			->useProgram();
 
 	modelViewUniform = shaderProgram->getUniform("modelViewProjectionMatrix");
 	timeUniform = shaderProgram->getUniform("time");
@@ -109,15 +121,17 @@ void update() {
 		}
 	}
 
-	lastTime = SDL_GetTicks();
-	rotation = lastTime / 1000.0;
+	lastTime = (double) SDL_GetTicks64() / 1000.0;
+	rotation = (float) lastTime;
+
+	shaderProgram->update();
 }
 
 void draw() {
 	ImGui::ShowDemoWindow();
 
 	ImGui::Begin("backgroundColor");
-	static glm::vec3 clearColor(51 / 255.0, 51 / 255.0, 51 / 255.0);
+	static glm::vec3 clearColor = glm::vec3(51, 51, 51) / 255.0f;
 	ImGui::ColorEdit3("color", glm::value_ptr(clearColor));
 	ImGui::End();
 	glClearColor(clearColor.r, clearColor.g, clearColor.b, 1);
@@ -128,23 +142,45 @@ void draw() {
 	mvp = glm::translate(mvp, glm::vec3(0, 0, -1));
 	mvp = glm::rotate(mvp, rotation, glm::vec3(0, 1, 0));
 	glUniformMatrix4fv(modelViewUniform, 1, GL_FALSE, glm::value_ptr(mvp));
-	glUniform1f(timeUniform, (float)lastTime);
+	glUniform1f(timeUniform, (float) lastTime);
 
 	Vertex vertices[] = {
-			Vertex(glm::vec3(-1, -1,  1), glm::vec4(1, 0, 0, 1)),
-			Vertex(glm::vec3( 1, -1,  1), glm::vec4(0, 1, 0, 1)),
-			Vertex(glm::vec3( 1,  1,  1), glm::vec4(0, 0, 1, 1)),
-			Vertex(glm::vec3(-1,  1,  1), glm::vec4(0, 0, 1, 1)),
+			Vertex(glm::vec3(-1, -1, +1), glm::vec4(1, 0, 0, 1)),
+			Vertex(glm::vec3(+1, -1, +1), glm::vec4(0, 1, 0, 1)),
+			Vertex(glm::vec3(+1, +1, +1), glm::vec4(0, 0, 1, 1)),
+			Vertex(glm::vec3(-1, +1, +1), glm::vec4(0, 0, 1, 1)),
 
-			Vertex(glm::vec3( 1,  1, -1), glm::vec4(1, 0, 0, 1)),
-			Vertex(glm::vec3(-1,  1, -1), glm::vec4(0, 0, 1, 1)),
+			Vertex(glm::vec3(+1, +1, -1), glm::vec4(1, 0, 0, 1)),
+			Vertex(glm::vec3(-1, +1, -1), glm::vec4(0, 0, 1, 1)),
 			Vertex(glm::vec3(-1, -1, -1), glm::vec4(0, 0, 1, 1)),
-			Vertex(glm::vec3( 1, -1, -1), glm::vec4(0, 1, 0, 1)),
+			Vertex(glm::vec3(+1, -1, -1), glm::vec4(0, 1, 0, 1)),
+
+
+			Vertex(glm::vec3(-1, +1, -1), glm::vec4(1, 0, 0, 1)),
+			Vertex(glm::vec3(+1, +1, -1), glm::vec4(0, 1, 0, 1)),
+			Vertex(glm::vec3(+1, +1, +1), glm::vec4(0, 0, 1, 1)),
+			Vertex(glm::vec3(-1, +1, +1), glm::vec4(0, 0, 1, 1)),
+
+			Vertex(glm::vec3(+1, -1, +1), glm::vec4(1, 0, 0, 1)),
+			Vertex(glm::vec3(-1, -1, +1), glm::vec4(0, 0, 1, 1)),
+			Vertex(glm::vec3(-1, -1, -1), glm::vec4(0, 0, 1, 1)),
+			Vertex(glm::vec3(+1, -1, -1), glm::vec4(0, 1, 0, 1)),
+
+
+			Vertex(glm::vec3(+1, -1, -1), glm::vec4(1, 0, 0, 1)),
+			Vertex(glm::vec3(+1, +1, -1), glm::vec4(0, 1, 0, 1)),
+			Vertex(glm::vec3(+1, +1, +1), glm::vec4(0, 0, 1, 1)),
+			Vertex(glm::vec3(+1, -1, +1), glm::vec4(0, 0, 1, 1)),
+
+			Vertex(glm::vec3(-1, +1, +1), glm::vec4(1, 0, 0, 1)),
+			Vertex(glm::vec3(-1, -1, +1), glm::vec4(0, 0, 1, 1)),
+			Vertex(glm::vec3(-1, -1, -1), glm::vec4(0, 0, 1, 1)),
+			Vertex(glm::vec3(-1, +1, -1), glm::vec4(0, 1, 0, 1)),
 	};
 
 	glVertexAttribPointer(0, 3, GL_FLOAT, false, sizeof(Vertex), vertices);
 	glVertexAttribPointer(1, 4, GL_FLOAT, false, sizeof(Vertex), &vertices[0].color);
-	glDrawArrays(GL_QUADS, 0, 8);
+	glDrawArrays(GL_QUADS, 0, 24);
 }
 
 void destroy() {

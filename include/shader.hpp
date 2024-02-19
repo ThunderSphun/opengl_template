@@ -5,27 +5,23 @@
 #include <optional>
 #include <glad/gl.h>
 
-enum class ShaderType;
-
 class Shader {
 public:
-	Shader(const std::string& path, ShaderType shaderType);
-	~Shader();
+	Shader(const std::string& path, GLenum shaderType);
+	Shader() = default;
 
 	std::string lastError;
 
 private:
 	friend class ShaderProgram;
 
-	bool compile(const char* source, ShaderType shaderType);
-
+	bool compile(const char* source, GLenum shaderType);
 	[[nodiscard]] bool shouldUpdate() const;
+
+	bool parsePath(std::string& pathToParse, GLenum shaderType);
+	std::string readEntireFile();
 
 	std::optional<std::string> path;
 	GLuint id = -1;
-};
-
-enum class ShaderType {
-	fragment,
-	vertex
+	mutable time_t lastTimeStamp = 0;
 };

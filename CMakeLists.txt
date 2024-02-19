@@ -38,6 +38,7 @@ include_directories(include)
 
 set(SOURCES source/window.cpp source/shader.cpp source/shaderProgram.cpp)
 
+set(CMAKE_EXE_LINKER_FLAGS "-static")
 add_executable(${PROJECT_NAME} main.cpp ${SOURCES})
 
 target_link_libraries(${PROJECT_NAME} SDL2::SDL2 ImGui Opengl32 glm glad_330)

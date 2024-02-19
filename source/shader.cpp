@@ -1,33 +1,21 @@
-#include <iostream>
-#include <cstring>
 #include "shader.hpp"
 
-Shader::Shader(const std::string& path, ShaderType shaderType) {
-	this->path = std::string(path);
+#include <iostream>
+#include <cstring>
+#include <sys/stat.h>
 
-	std::ifstream file;
-	if (path.find('\\') != std::string::npos || path.find('/') != std::string::npos)
-		file.open(path);
-	else
-		file.open("resources/shaders/" + path);
+Shader::Shader(const std::string& path, GLenum shaderType) {
+	{
+		std::string roughPath = path;
+		if (!parsePath(roughPath, shaderType))
+			throw std::runtime_error(roughPath);
+		this->path = roughPath;
+	}
 
-	if (!file)
-		throw "file path invalid";
-
-	std::string shaderString((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-
-	file.close();
-
-	if (shaderString.empty())
-		throw "file wasn't loaded";
+	std::string shaderString = readEntireFile();
 
 	if (!compile(shaderString.c_str(), shaderType))
-		throw lastError;
-}
-
-Shader::~Shader() {
-	if (id != -1)
-		glDeleteShader(id);
+		throw std::runtime_error(lastError);
 }
 
 bool Shader::shouldUpdate() const {
@@ -35,36 +23,54 @@ bool Shader::shouldUpdate() const {
 		return false;
 	}
 
-	return false;
+	struct stat result{};
+
+	if (stat(path->c_str(), &result) == -1) {
+		std::cerr << "filepath somehow invalid" << std::endl << "ignoring update" << std::endl;
+		return false;
+	}
+
+	bool retVal = false;
+	time_t fileChangedTimeStamp = result.st_mtime;
+	if (fileChangedTimeStamp > lastTimeStamp)
+		retVal = true;
+	lastTimeStamp = fileChangedTimeStamp;
+
+	return retVal;
 }
 
-bool Shader::compile(const char* source, ShaderType shaderType) {
+bool Shader::compile(const char* source, GLenum shaderType) {
+	if (id != -1)
+		glDeleteShader(id);
+
 	switch (shaderType) {
-		case ShaderType::fragment:
+		case GL_FRAGMENT_SHADER:
 			id = glCreateShader(GL_FRAGMENT_SHADER);
 			break;
-		case ShaderType::vertex:
+		case GL_VERTEX_SHADER:
 			id = glCreateShader(GL_VERTEX_SHADER);
 			break;
 		default:
-			std::cout << "shader type not supported" << std::endl;
+			lastError = "shader type not supported";
 			return false;
 	}
 	if (glGetError() == GL_INVALID_ENUM) {
-		std::cerr << "passed in wrong shader type" << std::endl;
+		lastError = "passed in wrong shader type";
 		id = -1;
 		return false;
 	}
 	if (id == 0) {
+		lastError = "internal OpenGL error";
 		id = -1;
 		return false;
 	}
 
 	glShaderSource(id, 1, &source, nullptr);
 	{
-		GLint error;
+		GLint error = 0;
 		glGetShaderiv(id, GL_SHADER_SOURCE_LENGTH, &error);
 		if (error == 0) {
+			lastError = "could not upload shader source to OpenGL";
 			glDeleteShader(id);
 			id = -1;
 			return false;
@@ -73,14 +79,14 @@ bool Shader::compile(const char* source, ShaderType shaderType) {
 
 	glCompileShader(id);
 	{
-		GLint error;
+		GLint error = 0;
 		glGetShaderiv(id, GL_COMPILE_STATUS, &error);
 		if (error == GL_FALSE) {
-			int length;
+			int length = 0;
 			glGetShaderiv(id, GL_INFO_LOG_LENGTH, &length);
 			char* errorMessage = new char[length + 1];
 			memset(errorMessage, 0, length + 1);
-			int writtenCount;
+			int writtenCount = 0;
 			glGetShaderInfoLog(id, length, &writtenCount, errorMessage);
 			lastError = std::string(errorMessage);
 			delete[] errorMessage;
@@ -91,4 +97,52 @@ bool Shader::compile(const char* source, ShaderType shaderType) {
 	}
 
 	return true;
+}
+
+bool Shader::parsePath(std::string& pathToParse, GLenum shaderType) {
+	if (pathToParse.find('\\') == std::string::npos && pathToParse.find('/') == std::string::npos)
+		pathToParse = "resources/shaders/" + pathToParse;
+	if (pathToParse.find('.') == std::string::npos) {
+		switch (shaderType) {
+			case GL_FRAGMENT_SHADER:
+				pathToParse += ".frag";
+				break;
+			case GL_VERTEX_SHADER:
+				pathToParse += ".vert";
+				break;
+			default:
+				pathToParse = "";
+				lastError = "shader type not supported";
+				return false;
+		}
+	}
+
+	return true;
+}
+
+std::string Shader::readEntireFile() {
+	struct stat result{};
+
+	if (stat(path->c_str(), &result) == -1) {
+		lastError = "file path '" + path.value() + "' invalid";
+		throw std::runtime_error(lastError);
+	}
+
+	std::ifstream file(path->c_str());
+
+	if (!file) {
+		lastError = "file path '" + path.value() + "' invalid";
+		throw std::runtime_error(lastError);
+	}
+
+	std::string shaderString((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+	if (shaderString.empty()) {
+		lastError = "file wasn't loaded";
+		throw std::runtime_error(lastError);
+	}
+
+	lastTimeStamp = result.st_mtime;
+
+	return shaderString;
 }

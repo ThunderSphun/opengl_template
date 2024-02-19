@@ -1,5 +1,7 @@
 #include "shaderProgram.hpp"
-#include "glm/gtc/type_ptr.hpp"
+
+#include <iostream>
+#include <glm/gtc/type_ptr.hpp>
 
 ShaderProgram::ShaderProgram() {
 	id = glCreateProgram();
@@ -15,6 +17,21 @@ ShaderProgram* ShaderProgram::attachShader(const Shader& shader) {
 	shaders.push_back(shader);
 	glAttachShader(id, shader.id);
 
+	switch (glGetError()) {
+		case GL_INVALID_ENUM:
+			std::cerr << "enum isn't valid" << std::endl;
+			break;
+		case GL_INVALID_VALUE:
+			std::cerr << "shader id isn't valid" << std::endl;
+			break;
+		case GL_INVALID_OPERATION:
+			if (glIsShader(shader.id))
+				std::cerr << "shader id isn't a shader" << std::endl;
+			else
+				std::cerr << "unknown invalid operation" << std::endl;
+			break;
+	}
+
 	return this;
 }
 
@@ -27,7 +44,21 @@ ShaderProgram* ShaderProgram::bindAttribute(int index, const char* name) {
 ShaderProgram* ShaderProgram::linkProgram() {
 	glLinkProgram(id);
 
-	// TODO: check for linking errors
+	{
+		GLint error = 0;
+		glGetProgramiv(id, GL_LINK_STATUS, &error);
+
+		if (error == GL_FALSE) {
+			int length = 0;
+			glGetProgramiv(id, GL_INFO_LOG_LENGTH, &length);
+			char* errorMessage = new char[length + 1];
+			memset(errorMessage, 0, length + 1);
+			int writtenCount = 0;
+			glGetProgramInfoLog(id, length, &writtenCount, errorMessage);
+			std::cerr << errorMessage << std::endl;
+			delete[] errorMessage;
+		}
+	}
 
 	return this;
 }
@@ -39,11 +70,37 @@ ShaderProgram* ShaderProgram::useProgram() {
 }
 
 void ShaderProgram::update() {
-	for (const auto& shader : shaders) {
-		if (shader.shouldUpdate()) {
+	GLint currentProgramId;
+	glGetIntegerv(GL_CURRENT_PROGRAM, &currentProgramId);
 
+	bool shouldReLink = false;
+
+	for (auto& shader : shaders) {
+		if (!shader.shouldUpdate())
+			continue;
+
+		GLint shaderType = 0;
+		GLuint oldID = shader.id;
+		glGetShaderiv(oldID, GL_SHADER_TYPE, &shaderType);
+
+		if (shader.compile(shader.readEntireFile().c_str(), shaderType)) {
+
+			glDetachShader(id, oldID);
+			glDeleteShader(oldID);
+			glAttachShader(id, shader.id);
+
+			shouldReLink = true;
+
+		} else {
+			std::cerr << shader.lastError << std::endl;
 		}
 	}
+
+	if (shouldReLink)
+		linkProgram();
+
+	if (currentProgramId == id)
+		useProgram();
 }
 
 GLint ShaderProgram::getUniform(const std::string& uniform) const {

@@ -1,6 +1,8 @@
 #include "window.hpp"
 
 #include <iostream>
+#include <sstream>
+
 #include <glad/gl.h>
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_opengl3.h>
@@ -8,6 +10,7 @@
 Window::Window() {
 	window = nullptr;
 	glContext = nullptr;
+	imGuiIO = nullptr;
 }
 
 Window::~Window() {
@@ -29,6 +32,21 @@ bool Window::initWindow(const std::string& title, glm::ivec2 windowPos, glm::ive
 	if (!SDL_WasInit(SDL_INIT_VIDEO) && SDL_Init(SDL_INIT_EVERYTHING) != 0) {
 		std::cerr << SDL_GetError() << std::endl;
 		return false;
+	}
+
+	if ((windowFlags & SDL_WINDOW_OPENGL) != 0) {
+		if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY) != 0) {
+			std::cerr << SDL_GetError() << std::endl;
+			return false;
+		}
+		if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4) != 0) {
+			std::cerr << SDL_GetError() << std::endl;
+			return false;
+		}
+		if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 6) != 0) {
+			std::cerr << SDL_GetError() << std::endl;
+			return false;
+		}
 	}
 
 	window = SDL_CreateWindow(title.c_str(), windowPos.x, windowPos.y, windowSize.x, windowSize.y, windowFlags);
@@ -54,9 +72,13 @@ bool Window::initOpenGl() {
 		return false;
 	}
 
+	if ((SDL_GetWindowFlags(window) & SDL_WINDOW_OPENGL) == 0) {
+		std::cerr << "SDL window not initialized with 'SDL_WINDOW_OPENGL'" << std::endl;
+		return false;
+	}
+
 	glContext = SDL_GL_CreateContext(window);
-	if (glContext == nullptr)
-	{
+	if (glContext == nullptr) {
 		destroyWindow();
 
 		std::cerr << SDL_GetError() << std::endl;
@@ -100,40 +122,53 @@ bool Window::initOpenGl() {
 }
 
 bool Window::initImGui(const int imGuiFlags) {
+	if (window == nullptr) {
+		std::cerr << "SDL window not yet initialized" << std::endl;
+		return false;
+	}
+	if (glContext == nullptr) {
+		std::cerr << "SDL window not initialized with 'SDL_WINDOW_OPENGL'" << std::endl;
+		return false;
+	}
+	if (imGuiIO != nullptr) {
+		std::cerr << "imgui already initialized" << std::endl;
+		return false;
+	}
 	if (!IMGUI_CHECKVERSION()) {
 		std::cerr << "Dear ImGui has the wrong version" << std::endl;
 		return false;
 	}
-	ImGui::CreateContext();
-	imGuiIO = ImGui::GetIO();
 
-	imGuiIO.ConfigFlags |= imGuiFlags;
+	ImGui::CreateContext();
+	imGuiIO = &ImGui::GetIO();
+
+	imGuiIO->ConfigFlags |= imGuiFlags;
 
 	ImGui::StyleColorsDark();
 
 	ImGuiStyle& style = ImGui::GetStyle();
-	if (imGuiIO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-	{
+	if (imGuiIO->ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
 		style.WindowRounding = 0.0f;
 		style.Colors[ImGuiCol_WindowBg].w = 1.0f;
 	}
 
-	if (window == nullptr) {
-		destroyImGui();
+	{
+		// Setup Platform/Renderer backends
+		int majorVersion = 0;
+		int minorVersion = 0;
 
-		std::cerr << "SDL window not yet initialized" << std::endl;
-		return false;
+		if (SDL_GL_GetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, &majorVersion) != 0 ||
+			SDL_GL_GetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, &minorVersion)) {
+			majorVersion = 3;
+			minorVersion = 3;
+		}
+
+		std::stringstream versionString;
+		versionString << "#version " << majorVersion << minorVersion << '0';
+
+		ImGui_ImplSDL2_InitForOpenGL(window, glContext);
+		ImGui_ImplOpenGL3_Init(versionString.str().c_str());
 	}
-
-	if (glContext == nullptr) {
-		destroyImGui();
-
-		std::cerr << "SDL window not initialized with 'SDL_WINDOW_OPENGL'" << std::endl;
-		return false;
-	}
-	// Setup Platform/Renderer backends
-	ImGui_ImplSDL2_InitForOpenGL(window, glContext);
-	ImGui_ImplOpenGL3_Init("#version 330");
 
 	return true;
 }
@@ -184,10 +219,12 @@ void Window::postDraw() const {
 
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-	if ((imGuiIO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) != 0)
-	{
+	if ((imGuiIO->ConfigFlags & ImGuiConfigFlags_ViewportsEnable) != 0) {
+		SDL_Window* backup_current_window = SDL_GL_GetCurrentWindow();
+		SDL_GLContext backup_current_context = SDL_GL_GetCurrentContext();
 		ImGui::UpdatePlatformWindows();
 		ImGui::RenderPlatformWindowsDefault();
+		SDL_GL_MakeCurrent(backup_current_window, backup_current_context);
 	}
 
 	SDL_GL_SwapWindow(window);

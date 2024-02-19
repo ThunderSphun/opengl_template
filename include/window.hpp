@@ -24,12 +24,12 @@ public:
 	void preDraw() const;
 	void postDraw() const;
 
-	uint32_t id() const;
+	[[nodiscard]] uint32_t id() const;
 	void handleImGuiEvent(const SDL_Event& event) const;
-	glm::ivec2 getSize() const;
+	[[nodiscard]] glm::ivec2 getSize() const;
 
 private:
 	SDL_Window* window;
 	SDL_GLContext glContext;
-	ImGuiIO imGuiIO;
+	ImGuiIO* imGuiIO;
 };

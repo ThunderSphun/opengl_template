@@ -9,7 +9,6 @@ void main() {
 	vec3 c = color;
 
 	c *= .5 * (sin(time) + 1.);
-	c = vec3(mod(time, 1.));
 
 	fragColor = c;
 }
