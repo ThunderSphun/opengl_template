@@ -15,6 +15,6 @@ for window creation and window events
   for extra windows, and debug stat showing
 
 _(*For now Dear ImGui is used for debug windows.
-The idea is to make everything rendered through Dear ImGui)_
+The idea is to make everything rendered through Dear ImGui)_  
 _(*Glad will be build locally whenever the files do not exist yet ,
 Glad itself does not have code when cloned)_
